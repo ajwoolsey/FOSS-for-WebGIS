@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Display a Map Tiler Map with Leaflet</title>
+
+    <!--Leaflet Bindings-->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+    <!--MapTiler SDK-->
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.umd.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.css" rel="stylesheet" />
+
+    <!--Maptiler and Leaflet-->
+    <script src="https://cdn.maptiler.com/leaflet-maptilersdk/latest/leaflet-maptilersdk.js"></script>
+    <script src="https://cdn.maptiler.com/maptiler-geocoding-control/v0.0.95/leaflet.umd.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-geocoding-control/v0.0.95/style.css" rel="stylesheet" />
+
+    <!--Axios-->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <style>
+      #map {position: absolute; top: 0; right: 0; bottom: 0; left: 0;}
+    </style>
+  </head>
+  <body>
+    <div id="map">
+      <a href="https://www.maptiler.com" style="position:absolute;left:10px;bottom:10px;z-index:999;"><img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo"></a>
+    </div>
+    <p><a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a></p>
+    <!--Javascript that will put map on-->
+    <script>
+      const key = 'TbotjJeALs00mk30OHZd';
+      const map = L.map('map').setView([62.15, -95.93], 2.56); //starting position
+      //JS binding for Map Tiler
+      const mtLayer = L.maptilerLayer({
+        style: "https://api.maptiler.com/maps/e0c6d0ba-a9cc-48a5-bfb9-b779fa3a7135/style.json?key=TbotjJeALs00mk30OHZd",
+        geolocate:true
+      }).addTo(map);
+      //Add geocoding to map---want to be able to search for owls by name ask Professor
+      L.control.maptilerGeocoding({ apiKey: key }).addTo(map);
+
+      const owllines = axios('../data/owllines.geojson').then(resp => {
+        console.log(resp)
+
+        L.geoJSON(resp.data, {
+    style: function (feature) {
+        switch (feature.properties.name) {
+            case 'PaulAlbert-106206': return { color: "blue" };
+            case 'Heidi SNOW_13_03-106394': return { color: "orange" };
+            case 'Drew SNOW_13_08-106391': return { color: "yellow" };
+            case 'Fiona SNOW_13_07-106395': return { color: "red" };
+            case 'Gigi SNOW_13_06-106393': return { color: "brown" };
+            case 'Elise SNOW_13-10-106392': return { color: "green" };
+            case 'Christie SNOW_13_04-106390': return { color: "purple" };
+            case 'Jasmine SNOW_13_11-106397': return { color: "lightgreen" };
+            case 'Beatrix SNOW_13_05-106208': return { color: "gray" };
+            default: return { color: "black" };
+
+
+        }
+    },
+    //Layer bind pop up for owl name
+    onEachFeature: function (feature, layer) {
+        console.log(layer)
+        layer.bindPopup("Name= "+ feature.properties.name)
+    }
+}).addTo(map);
+})
+
+
+
+    </script>
+  </body>
+</html>
