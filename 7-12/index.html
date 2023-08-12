@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display a Map</title>
+    <!-- Include library -->
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.2.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@3.2.0/dist/maplibre-gl.js'></script>
+    
+    <!-- Add CSS to make map full screen -->
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+<!--Adding axios-->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div id="map"></div>
+</body>
+<script>
+//01 Add a map with demo tiles
+
+//https://maplibre.org/maplibre-gl-js/docs/examples/simple-map/
+// const map = new maplibregl.Map({
+//     container: 'map', // container id
+//     style: 'https://demotiles.maplibre.org/style.json', // style URL
+//     center: [0, 0], // starting position [lng, lat]
+//     zoom: 1, // starting zoom
+//     //will tell you what the zoom lat and long are in url
+//     hash: true
+// });
+
+//02 Replace with our own map from maptiler
+
+//Opwn Maptiler my cloud
+//Open "Maps" select your map
+//Copy the "use vector style" link and put in style
+const map = new maplibregl.Map({
+    container: 'map', // container id
+    style: 'https://api.maptiler.com/maps/backdrop/style.json?key=TbotjJeALs00mk30OHZd', // style URL
+    center: [0, 0], // starting position [lng, lat]
+    zoom: 1, // starting zoom
+    //will tell you what the zoom lat and long are in url
+    hash: true
+});
+
+//03 Map Events
+//Event on a DOM-click, hover, etc
+//Mapbox has better links on events, mapbox events are going to be the same
+//https://maplibre.org/maplibre-gl-js/docs/API/classes/maplibregl.Map/#events
+//https://maplibre.org/maplibre-gl-js/docs/API/classes/maplibregl.Map/#on
+//https://docs.mapbox.com/mapbox-gl-js/api/map/#map-events
+
+//map on or once
+//once only fires that event the first time something happens- when the page loads
+//on- every single time the map is clicked
+
+//Map.once
+//Anonymous function
+map.once('load', main);
+
+//Can put in argument- e for event
+// map.on('click', (e) => {
+//     console.log(e)
+// });
+
+//04 Load geojson
+//Axios
+async function main(){
+    const schoolGeojson = await axios('../schools.geojson');
+    
+    map.addSource('school-geo-source',{
+        'type':'geojson',
+        'data':schoolGeojson.data
+    })
+}
+
+</script>
+
+</html>
