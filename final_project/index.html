@@ -9,9 +9,13 @@
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!--Geocoding plug in-->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
     <!-- <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script> -->
     <title>DBird Mapper</title>
     <style>
+        @font-face { font-family: Antiquarian; src: url('Antiquarian.ttf'); } 
         #map {
             position: absolute;
             top: 0;
@@ -19,14 +23,39 @@
             left: 0;
             width: 100%;
         }
+        .infobox {
+            position: absolute;
+            font-family: Antiquarian;
+            margin-top: 5px;
+            margin-left: 5px;
+            padding: 5px;
+            width: 20%;
+            
+            font-size: 20px;
+            color: #64513B;
+            background-color: #D1BE9D;
+            border-radius: 3px;
+       
+}
 
         </style>
     </head>
     <body>
         <div id="map"></div>
+        <div class="infobox">
+                <div><strong>Date and Time: </strong><span id='date'></span></div>
+                <div><strong>Status: </strong><span id='stat'></span></div>
+                <div><strong>Common Name: </strong><span id='sp'></span></div>
+                <div><img id='img' src= imageshown></div>
+
+        </div>
     </body>
     <script>
-    console.log('map');
+    
+//constants to target the spans using ID
+    const dateDisplay = document.getElementById('date');
+    const statDisplay = document.getElementById('stat');
+    const speciesDisplay = document.getElementById('sp');
 
 mapboxgl.accessToken=
 "pk.eyJ1IjoiYXdvb2xzZXkiLCJhIjoiY2xqN2M5ZzYyMGh5bjNqbWg3MWwzNDI3ayJ9.DQTOkS07V7j-4oXcXmi1YQ";
@@ -47,32 +76,498 @@ mapboxgl.accessToken=
 //     }
 //   }
 });
+map.addControl(
+new MapboxGeocoder({
+accessToken: mapboxgl.accessToken,
+mapboxgl: mapboxgl
+})
+);
 
+var zoom = map.getZoom();
 //Add collisions geojson to map
 
 map.once('load', main);
+
+
 
 async function main() {
     let collisionsGeojson = await axios ('verifiedcollisions.geojson');
     map.addSource('collisions-source', {
         'type': 'geojson',
-        'data': collisionsGeojson.data
+        'data': collisionsGeojson.data,
+        'generateId': true,
     });
 console.log(collisionsGeojson);
 
-map.addLayer({
-    'id': 'collisions-marker',
-    'type': 'circle',
-    'source': 'collisions-source',
-    'layout': {},
-    'paint': {
-        'circle-color': '#68f',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': 'white'
+//trying heatmap
+
+map.addLayer(
+  {
+    id: 'collisions-heat',
+    type: 'heatmap',
+    source: 'collisions-source',
+    maxzoom: 20,
+    paint: {
+      // increase weight as diameter breast height increases
+      'heatmap-weight': {
+        property: 'dbh',
+        type: 'exponential',
+        stops: [
+          [1, 0],
+          [62, 1]
+        ]
+      },
+      // increase intensity as zoom level increases
+      'heatmap-intensity': {
+        stops: [
+          [7, 1],
+          [17, 3]
+        ]
+      },
+      // assign color values be applied to points depending on their density
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(236,222,239,0)',
+        0.2,
+        'rgb(208,209,230)',
+        0.4,
+        'rgb(166,189,219)',
+        0.6,
+        'rgb(103,169,207)',
+        0.8,
+        'rgb(28,144,153)'
+      ],
+    //   // increase radius as zoom increases
+    //   'heatmap-radius': {
+    //     stops: [
+    //       [7, 15],
+    //       [15, 20]
+    //     ]
+    //   },
+      // decrease opacity to transition into the circle layer
+      'heatmap-opacity': {
+        default: 1,
+        stops: [
+          [15, 1],
+          [17, 0.7]
+        ]
+      }
+    }
+  },
+  'waterway-label'
+);
+
+map.addLayer(
+  {
+    id: 'collisions-point',
+    type: 'circle',
+    source: 'collisions-source',
+    minzoom: 14,
+    paint: {
+      // increase the radius of the circle as the zoom level and dbh value increases
+      'circle-radius': {
+        property: 'dbh',
+        type: 'exponential',
+        stops: [
+          [{ zoom: 15, value: 1 }, 5],
+          [{ zoom: 15, value: 62 }, 10],
+          [{ zoom: 22, value: 1 }, 20],
+          [{ zoom: 22, value: 62 }, 50]
+        ]
+      },
+      'circle-color': {
+        property: 'dbh',
+        type: 'exponential',
+        stops: [
+          [0, 'rgba(236,222,239,0)'],
+          [10, 'rgb(236,222,239)'],
+          [20, 'rgb(208,209,230)'],
+          [30, 'rgb(166,189,219)'],
+          [40, 'rgb(103,169,207)'],
+          [50, 'rgb(28,144,153)'],
+          [60, 'rgb(1,108,89)']
+        ]
+      },
+    //   'circle-stroke-color': 'white',
+    //   'circle-stroke-width': 1,
+      'circle-opacity': {
+        stops: [
+          [15, 0],
+          [16, .8]
+        ]
+      }
+    }
+  },
+ 
+);
+
+// map.addLayer({
+//     'id': 'collisions-point',
+//     'type': 'circle',
+//     'source': 'collisions-source',
+    
+//     'layout': {},
+//    //Custom color of circle based on bird group
+//     'paint': {
+//         'circle-opacity': 0.7,
+        //Match function for color
+    //     'circle-color': [
+    //         'match', 
+    //         ['get', "group"],
+    //         'Other Passerines',
+    //         '#FF8C00',
+    //         '#FF0000'
+    // ]
+            // 'match', ["==",
+            // ["get", "group"], "Other Passerines"], "rgb(0,50,255)", "#000000"]
+        
     }
 
+
+
+
+
+let collInfo= null;
+
+map.on('mousemove', 'collisions-point', (event) => {
+    map.getCanvas().style.cursor = 'pointer';
+    //set constants
+    const date = event.features[0].properties.observed_at_utc;
+    const stat = event.features[0].properties.bird_status;
+    const spec = event.features[0].properties.common_name;
+
+    if (event.features.length === 0) return;
+    //Display in infobox
+    dateDisplay.textContent= date;
+    statDisplay.textContent = stat;
+    speciesDisplay.textContent = spec;
+   
+
+
+
+    if (speciesDisplay.textContent == "American Bittern") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5538_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "American Goldfinch") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4995_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "American Redstart") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4226_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "American Robin") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/3248_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "American Woodcock") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Anna's Hummingbird") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/2676_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Baltimore Oriole") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4979_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Bay-breasted Warbler") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4056_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Bell's Vireo") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4571_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Black-and-white Warbler") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4218_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Black-billed Cuckoo") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/1722_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Blackburnian Warbler") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4661_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Black-capped Chickadee") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/4033_Sibl_9780307957900_art_r1.jpg";
+    } else if (speciesDisplay.textContent == "Black-chinned Hummingbird") {
+
+        imageshown= "https://media.audubon.org/nas_birdapi/2760_Sibl_9780307957900_art_r1.jpg"; 
+
+    } else if (speciesDisplay.textContent == "Blackpoll Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4047_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Black-throated Blue Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4190_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Black-throated Green Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/082_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Blue Jay") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5504_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Blue-headed Vireo") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5627_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Brown Creeper") {
+        imageshown= "https://media.audubon.org/nas_birdapi/6460_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Brown Thrasher") {
+        imageshown= "https://media.audubon.org/nas_birdapi/008_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Canada Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4365_Sibl_9780307957900_art_r1.jpg"; }
+
+        else if (speciesDisplay.textContent == "Cape May Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4197_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Chestnut-sided Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/090_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Chipping Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/6454_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Common Yellowthroat") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5384_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Cedar Waxwing") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3038_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Connecticut Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4711_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Cooper's Hawk") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3635_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Dark-eyed Junco") {
+        imageshown= "https://media.audubon.org/nas_birdapi/Dark_eyed_Junco_4741_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Downy Woodpecker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5192_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Eastern Phoebe") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4479_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Eastern Towhee") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5599_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "European Starling") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3047_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Fox Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/Sooty_Fox_Sparrow_5402_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Golden-crowned Kinglet") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5477_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "grackle sp.") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4407_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Grasshopper Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5234_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Gray Catbird") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3023_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Hairy Woodpecker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5168_Sibl_9780307957900_art_r1.jpg"; } 
+       
+        else if (speciesDisplay.textContent == "Hermit Thrush") { 
+        imageshown= "https://media.audubon.org/nas_birdapi/3546_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "House Finch") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4116_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "House Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4130_Sibl_9780307957900_art_r1.jpgg";
+    } 
+        else if (speciesDisplay.textContent == "House Wren") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3001_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "hummingbird sp.") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2676_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Indigo Bunting") {
+        imageshown= "https://media.audubon.org/nas_birdapi/6079_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "kinglet sp.") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5483_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Lincoln's Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4799_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Marsh Wren") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4014_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Mourning Dove") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2829_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Mourning Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5262_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Nashville Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4168_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Northern Flicker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/Northern_Flicker_2485_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Northern Mockingbird") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4562_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Northern Parula") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4182_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Northern Waterthrush") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4672_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Orange-crowned Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4286_Sibl_9780307957900_art_r1.jpg";
+    }  
+        else if (speciesDisplay.textContent == "Ovenbird") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4684_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Palm Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3952_Sibl_9780307957900_art_r1.jpg";
+    } 
+        
+        else if (speciesDisplay.textContent == "Pine Siskin") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4095_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Pine Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4358_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Red-bellied Woodpecker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5162_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Red-breasted Nuthatch") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5568_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Red-eyed Vireo") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4591_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Red-tailed Hawk") {
+        imageshown= "https://media.audubon.org/nas_birdapi/sibley_red_tailed_hawk.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Rock Pigeon") {
+        imageshown= "https://media.audubon.org/nas_birdapi/1691_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Rose-breasted Grosbeak") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3236_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Rosy-faced Lovebird") {
+        imageshown= "https://media.audubon.org/nas_birdapi/web_5145_sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Ruby-crowned Kinglet") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5483_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Ruby-throated Hummingbird") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2762_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "sapsucker sp.") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2461_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Scarlet Tanager") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3468_Sibl_9780307957900_art_r1.jpg";
+    } 
+        // else if (speciesDisplay.textContent == "Setophaga sp.") {
+        // imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    // } 
+        else if (speciesDisplay.textContent == "Song Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/6532_Sibl_9780307957900_art_r1.jpg";
+    } 
+    //     else if (speciesDisplay.textContent == "sparrow sp.") {
+    //     imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    // } 
+        else if (speciesDisplay.textContent == "Swainson's Thrush") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5332_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Swamp Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4806_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Tennessee Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4204_Sibl_9780307957900_art_r1.jpg";
+    } 
+    //     else if (speciesDisplay.textContent == "thrush sp.h") {
+    //     imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    // } 
+        else if (speciesDisplay.textContent == "Tufted Titmouse") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4464_Sibl_9780307957900_art_r1.jpg";
+    } 
+    //     else if (speciesDisplay.textContent == "unknown") {
+    //     imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    // } 
+        else if (speciesDisplay.textContent == "Veery") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4562_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Virginia Rail") {
+        imageshown= "https://media.audubon.org/nas_birdapi/1183_Sibl_9780307957900_art_r1.jpg";
+    } 
+    //     else if (speciesDisplay.textContent == "warbler sp. (Parulidae sp.)") {
+    //     imageshown= "https://media.audubon.org/nas_birdapi/5207_Sibl_9780307957900_art_r1.jpg";
+    // } 
+        else if (speciesDisplay.textContent == "Western Tanager") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3465_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "White-breasted Nuthatch") {
+        imageshown= "https://media.audubon.org/nas_birdapi/5675_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "White-eyed Vireo") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4602_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "White-throated Sparrow") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3262_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Williamson's Sapsucker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2461_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Wood Duck") {
+        imageshown= "https://media.audubon.org/nas_birdapi/753_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Wood Thrush") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4557_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Worm-eating Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4230_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4316_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow-bellied Flycatcher") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3137_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow-bellied Sapsucker") {
+        imageshown= "https://media.audubon.org/nas_birdapi/2450_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow-breasted Chat") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4275_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow-rumped Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/4692_Sibl_9780307957900_art_r1.jpg";
+    } 
+        else if (speciesDisplay.textContent == "Yellow-throated Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/3483_Sibl_9780307957900_art_r1.jpg";
+
+
+    }   else { 
+        imageshown= "https://media.licdn.com/dms/image/C4D0BAQF1A4HVBIYlzg/company-logo_200_200/0/1519885841602?e=2147483647&v=beta&t=_Y9apaD_96MxJ-WJePhH9WUXws-LouEHWzUeix0wTfs"
+
+    }
+    document.getElementById('img').src = imageshown;
+
+    if (collInfo) {
+        map.removeFeatureState({
+            source: 'collisions-source',
+            id: collInfo
+        });
+    }
+console.log(spec)
+    
+    collInfo = event.features[0].id,
+    map.setFeatureState(
+        {
+            source: 'collisions-source',
+            id: collInfo
+        },
+        {
+            hover: true
+        }
+    );
 });
-}
 
 //Need to convert csv to geojson? Too complicated via code, csv to json converter
+//Maybe color
     </script>

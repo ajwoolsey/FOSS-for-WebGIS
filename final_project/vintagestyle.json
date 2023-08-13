@@ -1,0 +1,27 @@
+{
+    "version": 8,
+    "name": "Blank",
+    "metadata": {
+        "mapbox:autocomposite": true,
+        "mapbox:type": "template",
+        "mapbox:sdk-support": {
+            "js": "3.0.0",
+            "android": "11.0.0",
+            "ios": "11.0.0"
+        }
+    },
+    "center": [0, 0],
+    "zoom": 0,
+    "sources": {},
+    "sprite": "mapbox://sprites/awoolsey/cll8lbix900t601qnel4xhonk/ck2u8j60r58fu0sgyxrigm3cu",
+    "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+    "projection": {"name": "globe"},
+    "layers": [],
+    "created": "2023-08-12T22:30:14.157Z",
+    "modified": "2023-08-12T22:30:14.157Z",
+    "id": "cll8lbix900t601qnel4xhonk",
+    "owner": "awoolsey",
+    "visibility": "private",
+    "protected": false,
+    "draft": false
+}
