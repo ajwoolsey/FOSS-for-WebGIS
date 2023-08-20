@@ -15,7 +15,7 @@
     <!-- <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script> -->
     <title>DBird Mapper</title>
     <style>
-        @font-face { font-family: Antiquarian; src: url('Antiquarian.ttf'); } 
+        @font-face { font-family: DINPro-Medium; src: url('DINPro-Medium.ttf'); } 
         #map {
             position: absolute;
             top: 0;
@@ -25,15 +25,15 @@
         }
         .infobox {
             position: absolute;
-            font-family: Antiquarian;
+            font-family: DINPro-Medium;
             margin-top: 5px;
             margin-left: 5px;
             padding: 5px;
             width: 20%;
             
             font-size: 20px;
-            color: #64513B;
-            background-color: #D1BE9D;
+            color: black;
+            background-color: white;
             border-radius: 3px;
        
 }
@@ -49,6 +49,7 @@
                 <div><img id='img' src= imageshown></div>
 
         </div>
+   
     </body>
     <script>
     
@@ -204,25 +205,7 @@ map.addLayer(
  
 );
 
-// map.addLayer({
-//     'id': 'collisions-point',
-//     'type': 'circle',
-//     'source': 'collisions-source',
-    
-//     'layout': {},
-//    //Custom color of circle based on bird group
-//     'paint': {
-//         'circle-opacity': 0.7,
-        //Match function for color
-    //     'circle-color': [
-    //         'match', 
-    //         ['get', "group"],
-    //         'Other Passerines',
-    //         '#FF8C00',
-    //         '#FF0000'
-    // ]
-            // 'match', ["==",
-            // ["get", "group"], "Other Passerines"], "rgb(0,50,255)", "#000000"]
+
         
     }
 
@@ -296,6 +279,9 @@ map.on('mousemove', 'collisions-point', (event) => {
        
         else if (speciesDisplay.textContent == "Black-throated Green Warbler") {
         imageshown= "https://media.audubon.org/nas_birdapi/082_Sibl_9780307957900_art_r1.jpg"; } 
+        
+        else if (speciesDisplay.textContent == "Magnolia Warbler") {
+        imageshown= "https://media.audubon.org/nas_birdapi/098_Sibl_9780307957900_art_r1.jpg"; } 
         
         else if (speciesDisplay.textContent == "Blue Jay") {
         imageshown= "https://media.audubon.org/nas_birdapi/5504_Sibl_9780307957900_art_r1.jpg"; }
@@ -373,7 +359,7 @@ map.on('mousemove', 'collisions-point', (event) => {
         imageshown= "https://media.audubon.org/nas_birdapi/4116_Sibl_9780307957900_art_r1.jpg";
     } 
         else if (speciesDisplay.textContent == "House Sparrow") {
-        imageshown= "https://media.audubon.org/nas_birdapi/4130_Sibl_9780307957900_art_r1.jpgg";
+        imageshown= "https://media.audubon.org/nas_birdapi/4130_Sibl_9780307957900_art_r1.jpg";
     } 
         else if (speciesDisplay.textContent == "House Wren") {
         imageshown= "https://media.audubon.org/nas_birdapi/3001_Sibl_9780307957900_art_r1.jpg";
@@ -543,7 +529,7 @@ map.on('mousemove', 'collisions-point', (event) => {
 
 
     }   else { 
-        imageshown= "https://media.licdn.com/dms/image/C4D0BAQF1A4HVBIYlzg/company-logo_200_200/0/1519885841602?e=2147483647&v=beta&t=_Y9apaD_96MxJ-WJePhH9WUXws-LouEHWzUeix0wTfs"
+        imageshown= "empty.png"
 
     }
     document.getElementById('img').src = imageshown;
@@ -554,7 +540,7 @@ map.on('mousemove', 'collisions-point', (event) => {
             id: collInfo
         });
     }
-console.log(spec)
+
     
     collInfo = event.features[0].id,
     map.setFeatureState(
